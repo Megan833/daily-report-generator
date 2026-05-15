@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>日报周报生成器</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;font-family:"Microsoft YaHei","PingFang SC",Arial,sans-serif;color:#1f2937;background:#f5f7fb}.wrap{max-width:1080px;margin:0 auto;padding:28px 18px 42px}header{margin-bottom:22px}h1{margin:0 0 8px;font-size:30px;letter-spacing:0}.desc{margin:0;color:#667085;line-height:1.7;font-size:14px}.layout{display:grid;grid-template-columns:1fr 1fr;gap:18px}.panel{background:#fff;border:1px solid #e3e8f0;border-radius:8px;box-shadow:0 10px 26px rgba(31,41,55,.06);overflow:hidden}.panel-title{padding:15px 18px;border-bottom:1px solid #e3e8f0;font-size:17px;font-weight:700;background:#fbfcfe}.panel-body{padding:18px}.field{margin-bottom:16px}label{display:block;margin-bottom:7px;font-size:14px;font-weight:700;color:#344054}input,select,textarea{width:100%;border:1px solid #cfd8e3;border-radius:6px;padding:11px 12px;font:inherit;color:#1f2937;background:#fff;outline:none}input:focus,select:focus,textarea:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12)}textarea{min-height:112px;resize:vertical;line-height:1.65}.hint{margin-top:6px;color:#667085;font-size:12px;line-height:1.6}.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}button{border:1px solid transparent;border-radius:6px;padding:11px 15px;font:inherit;font-weight:700;cursor:pointer}.primary{background:#2563eb;color:#fff}.primary:hover{background:#1d4ed8}.secondary{background:#fff;border-color:#cfd8e3;color:#1f2937}.secondary:hover{background:#f8fafc}.danger{background:#fff;border-color:#f0b4b4;color:#b42318}.danger:hover{background:#fff5f5}.status{min-height:22px;margin-top:12px;color:#087443;font-size:13px;font-weight:700}.preview{min-height:520px;padding:18px;border:1px solid #d9e1ec;border-radius:8px;background:#fbfcfe;line-height:1.75;overflow-wrap:anywhere}.preview h2{margin:0 0 14px;padding-bottom:10px;border-bottom:1px solid #e3e8f0;font-size:22px}.preview h3{margin:18px 0 8px;font-size:16px}.preview p{margin:8px 0}.preview ul,.preview ol{padding-left:24px;margin:8px 0}.empty{color:#98a2b3}@media(max-width:860px){.layout{grid-template-columns:1fr}.two{grid-template-columns:1fr}h1{font-size:25px}.preview{min-height:280px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>日报周报生成器</h1>
+      <p class="desc">填写工作内容、问题风险和计划，点击生成后即可得到结构清晰的汇报文本。输入内容会自动保存在浏览器中。</p>
+    </header>
+    <div class="layout">
+      <section class="panel">
+        <div class="panel-title">输入区</div>
+        <div class="panel-body">
+          <div class="two">
+            <div class="field"><label for="reportType">汇报类型</label><select id="reportType"><option value="日报">日报</option><option value="周报">周报</option></select></div>
+            <div class="field"><label for="reportDate">日期</label><input id="reportDate" type="date"></div>
+          </div>
+          <div class="field"><label for="todayWork">工作内容</label><textarea id="todayWork" placeholder="例如：&#10;- 完成蓝微项目三家供应商报价对比&#10;- 更新采购比价表&#10;- 跟进凰岗项目结构件价格确认"></textarea><div class="hint">支持 Markdown 输入，例如：- 列表、**加粗**、1. 编号。</div></div>
+          <div class="field"><label for="risks">遇到的问题 / 风险</label><textarea id="risks" placeholder="例如：&#10;- 两个结构件供应商尚未反馈最终价格&#10;- 部分物料交期存在不确定性&#10;- 需要技术部确认图纸版本"></textarea></div>
+          <div class="field"><label for="tomorrowPlan">下一步计划</label><textarea id="tomorrowPlan" placeholder="例如：&#10;- 确认剩余物料价格和交期&#10;- 输出最终报价建议&#10;- 推动技术参数确认"></textarea></div>
+          <div class="actions"><button class="primary" id="generateBtn">生成汇报</button><button class="secondary" id="copyBtn">复制内容</button><button class="danger" id="resetBtn">清空重置</button></div>
+          <div class="status" id="status"></div>
+        </div>
+      </section>
+      <section class="panel"><div class="panel-title">预览区</div><div class="panel-body"><div class="preview empty" id="preview">生成后的日报/周报会显示在这里。</div></div></section>
+    </div>
+  </div>
+<script>
+const STORAGE_KEY="daily_weekly_report_generator_v1";
+const reportType=document.getElementById("reportType"),reportDate=document.getElementById("reportDate"),todayWork=document.getElementById("todayWork"),risks=document.getElementById("risks"),tomorrowPlan=document.getElementById("tomorrowPlan"),preview=document.getElementById("preview"),statusBox=document.getElementById("status"),generateBtn=document.getElementById("generateBtn"),copyBtn=document.getElementById("copyBtn"),resetBtn=document.getElementById("resetBtn");
+let generatedText="";
+function todayString(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+function showStatus(text){statusBox.textContent=text;clearTimeout(showStatus.timer);showStatus.timer=setTimeout(()=>statusBox.textContent="",1800)}
+function saveData(){localStorage.setItem(STORAGE_KEY,JSON.stringify({reportType:reportType.value,reportDate:reportDate.value,todayWork:todayWork.value,risks:risks.value,tomorrowPlan:tomorrowPlan.value,generatedText}))}
+function loadData(){const saved=localStorage.getItem(STORAGE_KEY);if(!saved){reportDate.value=todayString();return}try{const data=JSON.parse(saved);reportType.value=data.reportType||"日报";reportDate.value=data.reportDate||todayString();todayWork.value=data.todayWork||"";risks.value=data.risks||"";tomorrowPlan.value=data.tomorrowPlan||"";generatedText=data.generatedText||"";if(generatedText)renderPreview(generatedText)}catch(e){reportDate.value=todayString()}}
+function normalizeText(text,emptyText){return text.trim()||emptyText}
+function generateReport(){const type=reportType.value,date=reportDate.value||todayString(),work=normalizeText(todayWork.value,"暂无填写。"),riskText=normalizeText(risks.value,"暂无明显问题或风险。"),plan=normalizeText(tomorrowPlan.value,"暂无填写。"),workTitle=type==="周报"?"一、本周工作内容":"一、今日工作内容",planTitle=type==="周报"?"三、下周工作计划":"三、明日计划";generatedText=`## ${type}｜${date}\n\n### ${workTitle}\n\n${work}\n\n### 二、遇到的问题 / 风险\n\n${riskText}\n\n### ${planTitle}\n\n${plan}\n\n### 四、总结\n\n工作已按计划推进。后续将重点关注问题闭环、关键节点进度以及目标结果交付。`;renderPreview(generatedText);saveData();showStatus("汇报已生成")}
+function escapeHtml(text){return text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+function formatInline(text){return text.replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>").replace(/\*(.*?)\*/g,"<em>$1</em>").replace(/`(.*?)`/g,"<code>$1</code>")}
+function renderMarkdown(markdown){const lines=escapeHtml(markdown).split("\n");let html="",inList=false,inOrderedList=false;function closeLists(){if(inList){html+="</ul>";inList=false}if(inOrderedList){html+="</ol>";inOrderedList=false}}lines.forEach(line=>{const trimmed=line.trim();if(!trimmed){closeLists();return}if(trimmed.startsWith("### ")){closeLists();html+=`<h3>${formatInline(trimmed.slice(4))}</h3>`;return}if(trimmed.startsWith("## ")){closeLists();html+=`<h2>${formatInline(trimmed.slice(3))}</h2>`;return}if(/^[-*]\s+/.test(trimmed)){if(inOrderedList){html+="</ol>";inOrderedList=false}if(!inList){html+="<ul>";inList=true}html+=`<li>${formatInline(trimmed.replace(/^[-*]\s+/,""))}</li>`;return}if(/^\d+\.\s+/.test(trimmed)){if(inList){html+="</ul>";inList=false}if(!inOrderedList){html+="<ol>";inOrderedList=true}html+=`<li>${formatInline(trimmed.replace(/^\d+\.\s+/,""))}</li>`;return}closeLists();html+=`<p>${formatInline(trimmed)}</p>`});closeLists();return html}
+function renderPreview(text){preview.classList.remove("empty");preview.innerHTML=renderMarkdown(text)}
+async function copyReport(){if(!generatedText.trim()){showStatus("请先生成汇报");return}try{if(navigator.clipboard&&navigator.clipboard.writeText)await navigator.clipboard.writeText(generatedText);else fallbackCopy(generatedText);showStatus("已复制到剪贴板")}catch(e){fallbackCopy(generatedText);showStatus("已复制到剪贴板")}}
+function fallbackCopy(text){const temp=document.createElement("textarea");temp.value=text;temp.style.position="fixed";temp.style.left="-9999px";document.body.appendChild(temp);temp.focus();temp.select();document.execCommand("copy");document.body.removeChild(temp)}
+function resetAll(){if(!confirm("确定要清空所有输入内容和本地保存的数据吗？"))return;reportType.value="日报";reportDate.value=todayString();todayWork.value="";risks.value="";tomorrowPlan.value="";generatedText="";preview.classList.add("empty");preview.textContent="生成后的日报/周报会显示在这里。";localStorage.removeItem(STORAGE_KEY);showStatus("已清空重置")}
+[reportType,reportDate,todayWork,risks,tomorrowPlan].forEach(el=>el.addEventListener("input",saveData));generateBtn.addEventListener("click",generateReport);copyBtn.addEventListener("click",copyReport);resetBtn.addEventListener("click",resetAll);loadData();
+</script>
+</body>
+</html>
